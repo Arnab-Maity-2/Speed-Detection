@@ -1,13 +1,15 @@
 import cv2
+import os
 import pandas as pd
 import numpy as np
 from ultralytics import YOLO
 from tracker import *
 import time
 import openpyxl
+# from openpyxl.drawing.image import Image
 from math import dist
 model = YOLO('yolov8s.pt')
-
+countc = 0
 
 def RGB(event, x, y, flags, param):
     if event == cv2.EVENT_MOUSEMOVE:
@@ -25,6 +27,7 @@ def excel_data(filename_ex="excel_data.xlsx", sheetname="vehicle_info", data=Non
 
         # Find the next available row
         next_row = worksheet.max_row + 1
+        # worksheet.row_dimensions[next_row].height = 200
 
         # Insert serial number in the first column
         worksheet.cell(row=next_row, column=1, value=next_row - 1)
@@ -34,8 +37,6 @@ def excel_data(filename_ex="excel_data.xlsx", sheetname="vehicle_info", data=Non
             worksheet.cell(row=next_row, column=col, value=value)
 
         # Save the changes
-        workbook.save(filename_ex)
-        workbook.close()
         print("New row added successfully.")
 
     except FileNotFoundError:
@@ -72,11 +73,16 @@ try:
     for row in worksheet.iter_rows():
         for cell in row:
             cell.value = None
+            workbook.save(filename_ex)
+            workbook.close()
+    # workbook.close()
     for col, value in enumerate(Headers, start=1):
         worksheet.cell(row=1, column=col, value=value)
 
     # Save the changes
+
     workbook.save(filename_ex)
+    workbook.close()
 except FileNotFoundError:
     pass
 
@@ -91,6 +97,14 @@ my_file = open("coco.txt", "r")
 data = my_file.read()
 class_list = data.split("\n")
 # print(class_list)
+
+output_dir = "violator_vehicles"
+for item in os.listdir(output_dir):
+    item_path = os.path.join(output_dir, item)
+    if os.path.isfile(item_path):
+        # Delete files
+        os.remove(item_path)
+os.makedirs(output_dir, exist_ok=True)
 
 count = 0
 
@@ -159,6 +173,11 @@ while True:
                                 cv2.FONT_HERSHEY_COMPLEX, 0.6, (255, 255, 255), 1)
                     cv2.putText(frame, str(int(a_speed_kh))+'Km/h', (x4, y4),
                                 cv2.FONT_HERSHEY_COMPLEX, 0.8, (0, 255, 255), 2)
+                    image_name = os.path.join(
+                        output_dir, f"snapshot_{countc}.jpg")
+                    cv2.imwrite(image_name, frame)
+                    # print(f"Snapshot saved: {image_name}")
+                    countc += 1
                     text = f"goingdown : {len(counter)} Speed : {a_speed_kh} km/hr"
                     vio = append_text('stored.txt', text, a_speed_kh)
                     data = ['Going Down', len(counter), str(
@@ -183,6 +202,11 @@ while True:
                                 cv2.FONT_HERSHEY_COMPLEX, 0.6, (255, 255, 255), 1)
                     cv2.putText(frame, str(int(a_speed_kh1))+'Km/h', (x4, y4),
                                 cv2.FONT_HERSHEY_COMPLEX, 0.8, (0, 255, 255), 2)
+                    image_name = os.path.join(
+                        output_dir, f"snapshot_{countc}.jpg")
+                    cv2.imwrite(image_name, frame)
+                    print(f"Snapshot saved: {image_name}")
+                    countc += 1
                     text = f"goingup   : {len(counter1)} Speed : {a_speed_kh1} km/hr"
                     vio = append_text('stored.txt', text, a_speed_kh1)
                     data = ['Going Up', len(counter1), str(
@@ -209,6 +233,7 @@ while True:
     if cv2.waitKey(1) & 0xFF == 27:
         break
 
+workbook.save(filename_ex)
 workbook.close()
 cap.release()
 cv2.destroyAllWindows()
