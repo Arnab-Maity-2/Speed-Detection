@@ -1,0 +1,6 @@
+opencv-python
+pandas
+ultralytics
+tracker
+yolo
+openpyxl
