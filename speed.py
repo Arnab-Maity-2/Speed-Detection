@@ -46,6 +46,7 @@ def excel_data(filename_ex="excel_data.xlsx", sheetname="vehicle_info", data=Non
 with open('stored.txt', 'w') as file:
     pass
 
+# comment
 
 def append_text(filename, text, speed):
     with open(filename, 'a') as file:
