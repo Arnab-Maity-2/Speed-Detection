@@ -1,12 +1,13 @@
 import cv2
 import os
 import pandas as pd
-import numpy as np
 from ultralytics import YOLO
 from tracker import *
 import time
 import openpyxl
-# from openpyxl.drawing.image import Image
+from openpyxl.drawing.image import Image
+from openpyxl.utils import get_column_letter
+from openpyxl.styles import Alignment
 from math import dist
 model = YOLO('yolov8s.pt')
 countc = 0
@@ -16,6 +17,19 @@ def RGB(event, x, y, flags, param):
         colorsBGR = [x, y]
         # print(colorsBGR)
 
+
+def save_frame(image, x3, y3, x4, y4):
+    # Calculate new coordinates for the cropped region
+    padding = 100
+    x3_cropped = max(0, x3 - padding)
+    y3_cropped = max(0, y3 - padding)
+    x4_cropped = min(image.shape[1], x4 + padding+50)
+    y4_cropped = min(image.shape[0], y4 + padding)
+
+    # Crop the image
+    cropped_image = image[y3_cropped:y4_cropped, x3_cropped:x4_cropped]
+
+    return cropped_image
 
 def excel_data(filename_ex="excel_data.xlsx", sheetname="vehicle_info", data=None):
     try:
@@ -31,10 +45,20 @@ def excel_data(filename_ex="excel_data.xlsx", sheetname="vehicle_info", data=Non
 
         # Insert serial number in the first column
         worksheet.cell(row=next_row, column=1, value=next_row - 1)
+        worksheet.row_dimensions[next_row].height = 100
+
 
         # Insert data in subsequent columns
         for col, value in enumerate(data, start=2):
             worksheet.cell(row=next_row, column=col, value=value)
+            img = Image(image_name)
+            img.width = 125  # Adjust the width of the image
+            img.height = 100  # Adjust the height of the image
+            # Place the image in the 6th column of the specified row
+            img.anchor = f'{get_column_letter(6)}{next_row}'
+            worksheet.add_image(img)
+
+
 
         # Save the changes
         print("New row added successfully.")
@@ -46,11 +70,10 @@ def excel_data(filename_ex="excel_data.xlsx", sheetname="vehicle_info", data=Non
 with open('stored.txt', 'w') as file:
     pass
 
-# comment
 
 def append_text(filename, text, speed):
     with open(filename, 'a') as file:
-        if speed > 30:
+        if speed > 35:
             file.write(text + ' (overspeeding)' + '\n')
             vio = "overspeeding"
         elif speed < 20:
@@ -58,34 +81,27 @@ def append_text(filename, text, speed):
             vio = "underspeeding"
         else:
             file.write(text + '\n')
-            vio = "no violation"
+            vio = False
     return vio
-
 
 filename_ex = "excel_data.xlsx"
 sheetname = "vehicle_info"
+Headers = ['#', 'Direction', 'Sl_no.', 'Speed', 'Violation', 'Photos']
+
+if os.path.isfile(filename_ex):
+    os.remove(filename_ex)
+else:
+    pass
+
+
+workbook = openpyxl.Workbook()
+worksheet = workbook.create_sheet(title=sheetname, index=0)
+workbook.save(filename_ex)
 workbook = openpyxl.load_workbook(filename_ex)
 worksheet = workbook[sheetname]
-Headers = ['#', 'Direction', 'Sl_no.', 'Speed', 'Violation']
-
-try:
-
-    # Clear all cells in the worksheet
-    for row in worksheet.iter_rows():
-        for cell in row:
-            cell.value = None
-            workbook.save(filename_ex)
-            workbook.close()
-    # workbook.close()
-    for col, value in enumerate(Headers, start=1):
-        worksheet.cell(row=1, column=col, value=value)
-
-    # Save the changes
-
-    workbook.save(filename_ex)
-    workbook.close()
-except FileNotFoundError:
-    pass
+for col, value in enumerate(Headers, start=1):
+    worksheet.cell(row=1, column=col, value=value)
+workbook.save(filename_ex)
 
 
 cv2.namedWindow('RGB')
@@ -148,7 +164,7 @@ while True:
         y2 = int(row[3])
         d = int(row[5])
         c = class_list[d]
-        if 'car' in c:
+        if 'car' in c or 'motorcycle' in c:
             list.append([x1, y1, x2, y2])
     bbox_id = tracker.update(list)
     for bbox in bbox_id:
@@ -174,16 +190,20 @@ while True:
                                 cv2.FONT_HERSHEY_COMPLEX, 0.6, (255, 255, 255), 1)
                     cv2.putText(frame, str(int(a_speed_kh))+'Km/h', (x4, y4),
                                 cv2.FONT_HERSHEY_COMPLEX, 0.8, (0, 255, 255), 2)
-                    image_name = os.path.join(
-                        output_dir, f"snapshot_{countc}.jpg")
-                    cv2.imwrite(image_name, frame)
-                    # print(f"Snapshot saved: {image_name}")
-                    countc += 1
                     text = f"goingdown : {len(counter)} Speed : {a_speed_kh} km/hr"
                     vio = append_text('stored.txt', text, a_speed_kh)
-                    data = ['Going Down', len(counter), str(
-                        round(a_speed_kh, 2))+'km/hr', vio]
-                    excel_data(data=data)
+                    if vio != False:
+                        image_name = os.path.join(
+                            output_dir, f"snapshot_{countc}.jpg")
+                        cv2.imwrite(image_name, save_frame(
+                            frame, x3, y3, x4, y4))
+                        # image = Image(image_name)?
+                        # print(f"Snapshot saved: {image_name}")
+                        countc += 1
+
+                        data = ['Going Down', len(counter), str(
+                            round(a_speed_kh, 2))+'km/hr', vio]
+                        excel_data(data=data)
 
         ##### going UP#####
         if cy2 < (cy+offset) and cy2 > (cy-offset):
@@ -203,16 +223,20 @@ while True:
                                 cv2.FONT_HERSHEY_COMPLEX, 0.6, (255, 255, 255), 1)
                     cv2.putText(frame, str(int(a_speed_kh1))+'Km/h', (x4, y4),
                                 cv2.FONT_HERSHEY_COMPLEX, 0.8, (0, 255, 255), 2)
-                    image_name = os.path.join(
-                        output_dir, f"snapshot_{countc}.jpg")
-                    cv2.imwrite(image_name, frame)
-                    print(f"Snapshot saved: {image_name}")
-                    countc += 1
                     text = f"goingup   : {len(counter1)} Speed : {a_speed_kh1} km/hr"
                     vio = append_text('stored.txt', text, a_speed_kh1)
-                    data = ['Going Up', len(counter1), str(
-                        round(a_speed_kh1, 2)) + "km/hr", vio]
-                    excel_data(data=data)
+                    if vio != False:
+                        image_name = os.path.join(
+                            output_dir, f"snapshot_{countc}.jpg")
+                        cv2.imwrite(image_name, save_frame(
+                            frame, x3, y3, x4, y4))
+                        # print(f"Snapshot saved: {image_name}")
+                        # image = Image(image_name)
+                        countc += 1
+
+                        data = ['Going Up', len(counter1), str(
+                            round(a_speed_kh1, 2)) + "km/hr", vio]
+                        excel_data(data=data)
 
     cv2.line(frame, (274, cy1), (814, cy1), (255, 255, 255), 1)
 
@@ -233,6 +257,24 @@ while True:
     cv2.imshow("RGB", frame)
     if cv2.waitKey(1) & 0xFF == 27:
         break
+
+
+for col in worksheet.columns:
+    max_length = 0
+    column = col[0].column_letter  # Get the column letter
+    for cell in col:
+        try:
+            if len(str(cell.value)) > max_length:
+                max_length = len(cell.value)
+        except:
+            pass
+            # Add some padding and scaling factor
+    adjusted_width = (max_length + 2) * 1.1
+    worksheet.column_dimensions[column].width = adjusted_width
+worksheet.column_dimensions['f'].width = 20
+for row in worksheet.iter_rows():
+    for cell in row:
+        cell.alignment = Alignment(horizontal='center', vertical='center')
 
 workbook.save(filename_ex)
 workbook.close()
