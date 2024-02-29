@@ -107,7 +107,7 @@ workbook.save(filename_ex)
 cv2.namedWindow('RGB')
 cv2.setMouseCallback('RGB', RGB)
 
-cap = cv2.VideoCapture('veh2.mp4')
+cap = cv2.VideoCapture('veh3.mp4')
 
 
 my_file = open("coco.txt", "r")
@@ -176,16 +176,18 @@ while True:
 
         if cy1 < (cy+offset) and cy1 > (cy-offset):
             vh_down[id] = time.time()
+            cv2.circle(frame, (cx, cy), 4, (0, 0, 255), -1)
         if id in vh_down:
 
             if cy2 < (cy+offset) and cy2 > (cy-offset):
+                cv2.circle(frame, (cx, cy), 4, (255, 0, 0), -1)
                 elapsed_time = time.time() - vh_down[id]
                 if counter.count(id) == 0:
                     counter.append(id)
                     distance = 10  # meters
                     a_speed_ms = distance / elapsed_time
                     a_speed_kh = a_speed_ms * 3.6
-                    cv2.circle(frame, (cx, cy), 4, (0, 0, 255), -1)
+                    # cv2.circle(frame, (cx, cy), 4, (0, 0, 255), -1)
                     cv2.putText(frame, str(id), (x3, y3),
                                 cv2.FONT_HERSHEY_COMPLEX, 0.6, (255, 255, 255), 1)
                     cv2.putText(frame, str(int(a_speed_kh))+'Km/h', (x4, y4),
@@ -208,9 +210,11 @@ while True:
         ##### going UP#####
         if cy2 < (cy+offset) and cy2 > (cy-offset):
             vh_up[id] = time.time()
+            # cv2.circle(frame, (cx, cy), 4, (0, 0, 255), -1)
         if id in vh_up:
 
             if cy1 < (cy+offset) and cy1 > (cy-offset):
+                # cv2.circle(frame, (cx, cy), 4, (0, 255, 255), -1)
                 elapsed1_time = time.time() - vh_up[id]
 
                 if counter1.count(id) == 0:
@@ -218,7 +222,7 @@ while True:
                     distance1 = 10  # meters
                     a_speed_ms1 = distance1 / elapsed1_time
                     a_speed_kh1 = a_speed_ms1 * 3.6
-                    cv2.circle(frame, (cx, cy), 4, (0, 0, 255), -1)
+                    cv2.circle(frame, (cx, cy), 4, (255, 0, 0), -1)
                     cv2.putText(frame, str(id), (x3, y3),
                                 cv2.FONT_HERSHEY_COMPLEX, 0.6, (255, 255, 255), 1)
                     cv2.putText(frame, str(int(a_speed_kh1))+'Km/h', (x4, y4),
@@ -238,14 +242,14 @@ while True:
                             round(a_speed_kh1, 2)) + "km/hr", vio]
                         excel_data(data=data)
 
-    cv2.line(frame, (274, cy1), (814, cy1), (255, 255, 255), 1)
+    cv2.line(frame, (00, cy1), (1020, cy1), (255, 255, 255), 1)
 
-    cv2.putText(frame, ('L1'), (277, 320),
+    cv2.putText(frame, ('L1'), (15, cy1-2),
                 cv2.FONT_HERSHEY_COMPLEX, 0.8, (0, 255, 255), 2)
 
-    cv2.line(frame, (177, cy2), (927, cy2), (255, 255, 255), 1)
+    cv2.line(frame, (00, cy2), (1020, cy2), (255, 255, 255), 1)
 
-    cv2.putText(frame, ('L2'), (182, 367),
+    cv2.putText(frame, ('L2'), (15, cy2-2),
                 cv2.FONT_HERSHEY_COMPLEX, 0.8, (0, 255, 255), 2)
     d = (len(counter))
     u = (len(counter1))
@@ -255,7 +259,7 @@ while True:
     cv2.putText(frame, ('goingup:-')+str(u), (60, 130),
                 cv2.FONT_HERSHEY_COMPLEX, 0.8, (0, 255, 255), 2)
     cv2.imshow("RGB", frame)
-    if cv2.waitKey(1) & 0xFF == 27:
+    if cv2.waitKey(0) & 0xFF == 27:
         break
 
 
